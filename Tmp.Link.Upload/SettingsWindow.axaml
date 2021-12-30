@@ -1,0 +1,28 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Tmp.Link.Upload"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        Width="230"
+        Height="150"
+        WindowStartupLocation="CenterOwner"
+        x:Class="Tmp.Link.Upload.SettingsWindow"
+        Title="SettingsWindow">
+        <Design.DataContext>
+                <local:SettingsViewModel/>
+        </Design.DataContext>
+
+        <StackPanel>
+                <CheckBox Content="Auto Start (TODO)" IsChecked="{Binding AutoStart}"></CheckBox>
+                <CheckBox Content="Auto Upload" IsChecked="{Binding AutoUpload}"></CheckBox>
+                <TextBlock Text="Token:"></TextBlock>
+                <TextBox Text="{Binding Token}"></TextBox>
+                <ComboBox SelectedIndex="{Binding Expires}">
+                        <ComboBoxItem>24 hours</ComboBoxItem>
+                        <ComboBoxItem>3 days</ComboBoxItem>
+                        <ComboBoxItem>7 days</ComboBoxItem>
+                        <ComboBoxItem>Forever</ComboBoxItem>
+                </ComboBox>
+        </StackPanel>
+</Window>

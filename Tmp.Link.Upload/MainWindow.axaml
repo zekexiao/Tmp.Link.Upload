@@ -1,0 +1,36 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        Width="400"
+        Height="300"
+        x:Class="Tmp.Link.Upload.MainWindow"
+        Title="Tmp.Link.Upload">
+    <Grid RowDefinitions="Auto,*,Auto,*">
+        <Menu>
+            <MenuItem Header="File">
+                <MenuItem Click="OnSettingClick" Header="Setting"></MenuItem>
+                <MenuItem Click="OnExitClick" Header="Exit"></MenuItem>
+            </MenuItem>
+        </Menu>
+        
+        <Border Grid.Row="1"
+                DragDrop.AllowDrop="True"
+                BorderBrush="#191919"
+                BorderThickness="1"
+                Name="DropBorder">
+            <TextBlock Name="InfoBlock" 
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Center"
+                       Text="Drop Files">
+            </TextBlock>
+        </Border>
+        
+        <Button Grid.Row="2" 
+                Content="Start" 
+                Click="OnStartBtnClick"></Button>
+        <TextBox Grid.Row="3" Name="LogBox"></TextBox>
+    </Grid>
+</Window>
+
