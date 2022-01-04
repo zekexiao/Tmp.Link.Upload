@@ -16,13 +16,6 @@ namespace Tmp.Link.Upload
 {
     public class SettingsViewModel : INotifyPropertyChanged
     {
-        private static readonly SettingsViewModel _settingsViewModel = new SettingsViewModel();
-
-        public static SettingsViewModel Instance()
-        {
-            return _settingsViewModel;
-        }
-
         public event PropertyChangedEventHandler? PropertyChanged;
 
         [NotifyPropertyChangedInvocator]
