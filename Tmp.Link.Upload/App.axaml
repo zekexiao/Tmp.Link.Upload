@@ -3,5 +3,8 @@
              x:Class="Tmp.Link.Upload.App">
     <Application.Styles>
         <FluentTheme Mode="Light"/>
+        <Style Selector="TextBox">
+            <Setter Property="FontFamily" Value="Microsoft YaHei,Simsun,苹方-简,宋体-简"></Setter>
+        </Style>
     </Application.Styles>
 </Application>
