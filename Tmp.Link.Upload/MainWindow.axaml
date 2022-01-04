@@ -7,30 +7,34 @@
         Height="300"
         x:Class="Tmp.Link.Upload.MainWindow"
         Title="Tmp.Link.Upload">
-    <Grid RowDefinitions="Auto,*,Auto,*">
+    <Grid RowDefinitions="Auto,*,Auto,Auto,*">
         <Menu>
             <MenuItem Header="File">
                 <MenuItem Click="OnSettingClick" Header="Setting"></MenuItem>
                 <MenuItem Click="OnExitClick" Header="Exit"></MenuItem>
             </MenuItem>
         </Menu>
-        
+
         <Border Grid.Row="1"
                 DragDrop.AllowDrop="True"
                 BorderBrush="#191919"
                 BorderThickness="1"
                 Name="DropBorder">
-            <TextBlock Name="InfoBlock" 
+            <TextBlock Name="InfoBlock"
                        VerticalAlignment="Center"
                        HorizontalAlignment="Center"
                        Text="Drop Files">
             </TextBlock>
         </Border>
-        
-        <Button Grid.Row="2" 
-                Content="Start" 
-                Click="OnStartBtnClick"></Button>
-        <TextBox Grid.Row="3" Name="LogBox"></TextBox>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="2">
+            <Button Content="Upload"
+                    Click="OnStartBtnClick">
+            </Button>
+            <Button Content="GetInfo" Click="OnGetInfoBtnClick"></Button>
+        </StackPanel>
+
+        <TextBlock Grid.Row="3" Name="UploadingBlock"></TextBlock>
+        <TextBox Grid.Row="4" Name="LogBox"></TextBox>
     </Grid>
 </Window>
-

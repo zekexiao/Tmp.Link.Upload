@@ -13,6 +13,9 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Tmp.Link.Upload.Utils;
 
 namespace Tmp.Link.Upload
 {
@@ -22,8 +25,9 @@ namespace Tmp.Link.Upload
 
         public TextBlock InfoBlock;
         public Border DropBorder;
-        
+
         private readonly HttpClient _httpClient = new HttpClient();
+
         public MainWindow()
         {
             InitializeComponent();
@@ -35,7 +39,7 @@ namespace Tmp.Link.Upload
         private void InitializeComponent()
         {
             AvaloniaXamlLoader.Load(this);
-            
+
             DropBorder = this.Get<Border>("DropBorder");
             InfoBlock = this.Get<TextBlock>("InfoBlock");
             DropBorder.AddHandler(DragDrop.DropEvent, OnDropBorderDrop);
@@ -47,13 +51,10 @@ namespace Tmp.Link.Upload
                     DropBorder.Background = new SolidColorBrush(Color.FromRgb(0xe2, 0xe2, 0xe2));
                 }
             });
-            DropBorder.AddHandler(DragDrop.DragLeaveEvent, (s, e) =>
-            {
-                DropBorder.Background = Brushes.Transparent;
-            });
+            DropBorder.AddHandler(DragDrop.DragLeaveEvent, (_, _) => { DropBorder.Background = Brushes.Transparent; });
         }
 
-        private async void OnDropBorderDrop(object s, DragEventArgs e)
+        private async void OnDropBorderDrop(object? s, DragEventArgs e)
         {
             _selectedFiles.Clear();
             var fileNamesNullable = e.Data.GetFileNames();
@@ -64,6 +65,8 @@ namespace Tmp.Link.Upload
                     _selectedFiles.Add(file);
                 }
             }
+
+            InfoBlock.Text = $"Total {_selectedFiles.Count} Files";
 
             if (App.Settings.AutoUpload)
             {
@@ -84,49 +87,110 @@ namespace Tmp.Link.Upload
             UploadAll().ConfigureAwait(false);
         }
 
+        #region Services
         private async Task UploadAll()
         {
             // max upload 3 files one time, in case service 503
-            var chunks = _selectedFiles.Chunk(3);
+            var fileInfos = new List<FileInfo>();
+            foreach (var fullFilePath in _selectedFiles)
+            {
+                if (TryGetFileInfo(fullFilePath, out var info))
+                {
+                    fileInfos.Add(info);
+                }
+            }
+
+            var chunks = fileInfos.Chunk(3);
+
+            var uploadingBlock = this.Get<TextBlock>("UploadingBlock");
 
             foreach (var chunk in chunks)
             {
+                uploadingBlock.Text = $"Uploading: {string.Join(", ", chunk.Select(info => info.Name))}";
                 await Task.WhenAll(chunk.Select(Upload).ToArray());
             }
+
+            var sumBytes = fileInfos.Select(info => info.Length).Sum();
+            uploadingBlock.Text = $"Uploaded: {fileInfos.Count} files, {CommonUtils.ByteStrToSizeStr(sumBytes)}";
         }
 
-        private async Task Upload(string fileName)
+        private bool TryGetFileInfo(string fileName, out FileInfo info)
         {
-            FileInfo info = new FileInfo(fileName);
-            if (!info.Exists)
+            info = new FileInfo(fileName);
+            DirectoryInfo dirInfo = new DirectoryInfo(fileName);
+            if (dirInfo.Exists)
             {
-                Log($"Upload File: {fileName} Failed, File Not Exists\n");
-                return;
+                Log($"Upload: {fileName} Failed, It's a Directory\n");
+                return false;
             }
             
-            await using var file = info.OpenRead();
-            MultipartFormDataContent i = new MultipartFormDataContent();
-            i.Add(new StreamContent(file),  "file", info.Name);
-            i.Add(new StringContent(App.Settings.Token), "token");
-            i.Add(new StringContent($"{App.Settings.ExpiresToUploadModel()}"), "model");
-            using var resp = await _httpClient.PostAsync(new Uri("https://connect.tmp.link/api_v2/cli_uploader"), i);
+            if (!info.Exists)
+            {
+                Log($"Upload: {fileName} Failed, File Not Exists\n");
+                return false;
+            }
+
+            return true;
+        }
+        private async Task Upload(FileInfo fileInfo)
+        {
+            await using var file = fileInfo.OpenRead();
+            using var resp = await FormBuilder.Init(_httpClient)
+                .AddForm("token", App.Settings.Token)
+                .AddForm("model", App.Settings.ExpiresToUploadModel())
+                .AddForm("file", fileInfo.Name, file)
+                .PostAsync(new Uri("https://connect.tmp.link/api_v2/cli_uploader"));
+            
             var result = await resp.Content.ReadAsStringAsync();
-            Log($"Upload File: {fileName}\n{result}");
+            Log($"Upload File: {fileInfo.FullName}\n{result}");
             if (resp.IsSuccessStatusCode)
             {
                 var httpStartIndex = result.IndexOf("http", StringComparison.OrdinalIgnoreCase);
                 if (httpStartIndex != -1)
                 {
-                    var downloadUrl = result.Substring(httpStartIndex, result.IndexOf("\n", httpStartIndex, StringComparison.OrdinalIgnoreCase) - httpStartIndex);
+                    var downloadUrl = result.Substring(httpStartIndex,
+                        result.IndexOf("\n", httpStartIndex, StringComparison.OrdinalIgnoreCase) - httpStartIndex);
                     // TODO, add downloadUrl
                 }
             }
-            
         }
+
+        class TotalDataModel
+        {
+            [JsonProperty("nums")]
+            public string Nums { get; set; }
+            [JsonProperty("size")]
+            public string Size { get; set; }
+        }
+
+        class TotalModel
+        {
+            [JsonProperty("data")]
+            public TotalDataModel Data { get; set; }
+            [JsonProperty("debug")]
+            public object Debug { get; set; }
+            [JsonProperty("status")]
+            public string Status { get; set; }
+        }
+
+        private async Task<TotalModel> GetInfo()
+        {
+            using var resp = await FormBuilder.Init(_httpClient)
+                                 .AddForm("token", App.Settings.Token)
+                                 .AddForm("action", "total")
+                                 .PostAsync(new Uri("https://tun.tmp.link/api_v2/file")); 
+            var result = await resp.Content.ReadAsStringAsync();
+            var total = JsonConvert.DeserializeObject<TotalModel>(result);
+
+            return total;
+        }
+
+        #endregion
+
         private void Log(string str)
         {
             var logBox = this.Get<TextBox>("LogBox");
-            if(logBox != null)
+            if (logBox != null)
                 logBox.Text += str + Environment.NewLine;
         }
 
@@ -145,6 +209,17 @@ namespace Tmp.Link.Upload
         {
             App.SaveSettings(App.Settings);
             base.OnClosed(e);
+        }
+
+        private async void OnGetInfoBtnClick(object? sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn)
+            {
+                var info = await GetInfo();
+                var nums = info.Data.Nums;
+                var size = CommonUtils.ByteStrToSizeStr(info.Data.Size);
+                btn.Content = $"{nums} files, {size}";
+            }
         }
     }
 }
